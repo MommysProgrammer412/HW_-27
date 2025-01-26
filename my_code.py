@@ -2,10 +2,14 @@ import asyncio
 from openai import AsyncOpenAI
 from hw_27_data import DATA
 
-API_KEY = ''
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+API_KEY = os.getenv('API_KEY')
 BASE_URL = "https://api.vsegpt.ru/v1"
 MAX_CHUNK_SIZE = 5000
-SLEEP_TIME = 4
+SLEEP_TIME = 6
 OUTPUT_FILE = 'lecture_summary.md'
 PROMPT_THEME = """
 Привет!
@@ -136,26 +140,24 @@ def save_to_markdown(timestamps: str, theme: str, chunks: list):
 async def main():
     full_text = " ".join([item['text'] for item in DATA])
     
-    tasks = [
-        get_ai_request(PROMPT_TIMESTAMPS + full_text),
-        get_ai_request(PROMPT_THEME + full_text)
-    ]
-    timestamps, theme = await asyncio.gather(*tasks)
     await asyncio.sleep(SLEEP_TIME)
+    timestamps = await get_ai_request(PROMPT_TIMESTAMPS + full_text)
+    
+    await asyncio.sleep(SLEEP_TIME)
+    theme = await get_ai_request(PROMPT_THEME + full_text)
     
     chunks = split_text_to_chunks(DATA)
     
-    conspect_tasks = []
+    chunk_results = []
     for chunk in chunks:
+        await asyncio.sleep(SLEEP_TIME)
         prompt = PROMPT_CONSPECT_WRITER.format(
             topic=theme,
             full_text=full_text,
             text_to_work=chunk
         )
-        conspect_tasks.append(get_ai_request(prompt))
-        await asyncio.sleep(SLEEP_TIME)
-    
-    chunk_results = await asyncio.gather(*conspect_tasks)
+        result = await get_ai_request(prompt)
+        chunk_results.append(result)
     
     save_to_markdown(timestamps, theme, chunk_results)
 
