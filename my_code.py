@@ -99,3 +99,23 @@ async def get_ai_request(prompt: str, model: str = "openai/gpt-4o-mini", max_tok
     return response.choices[0].message.content
 
 OUTPUT_FILE = "lecture_summary.md"
+
+def split_text_to_chunks(data: list) -> list:
+    """Разбивает текст на чанки не более MAX_CHUNK_SIZE символов"""
+    chunks = []
+    current_chunk = ""
+    
+    for item in data:
+        text = item['text']
+        if len(current_chunk) + len(text) <= MAX_CHUNK_SIZE:
+            current_chunk += text
+        else:
+            if current_chunk:
+                chunks.append(current_chunk)
+            current_chunk = text
+    
+    if current_chunk:
+        chunks.append(current_chunk)
+    
+    return chunks
+
