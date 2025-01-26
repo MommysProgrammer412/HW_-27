@@ -101,7 +101,6 @@ async def get_ai_request(prompt: str, model: str = "openai/gpt-4o-mini", max_tok
 OUTPUT_FILE = "lecture_summary.md"
 
 def split_text_to_chunks(data: list) -> list:
-    """Разбивает текст на чанки не более MAX_CHUNK_SIZE символов"""
     chunks = []
     current_chunk = ""
     
@@ -119,3 +118,46 @@ def split_text_to_chunks(data: list) -> list:
     
     return chunks
 
+def save_to_markdown(timestamps: str, theme: str, chunks: list):
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+        f.write("# Таймкоды\n\n")
+        f.write(timestamps)
+        f.write("\n\n---\n\n")
+        
+        f.write("# Краткое содержание\n\n")
+        f.write(theme)
+        f.write("\n\n---\n\n")
+        
+        f.write("# Конспект\n\n")
+        for chunk in chunks:
+            f.write(chunk)
+            f.write("\n\n---\n\n")
+
+async def main():
+    full_text = " ".join([item['text'] for item in DATA])
+    
+    tasks = [
+        get_ai_request(PROMPT_TIMESTAMPS + full_text),
+        get_ai_request(PROMPT_THEME + full_text)
+    ]
+    timestamps, theme = await asyncio.gather(*tasks)
+    await asyncio.sleep(SLEEP_TIME)
+    
+    chunks = split_text_to_chunks(DATA)
+    
+    conspect_tasks = []
+    for chunk in chunks:
+        prompt = PROMPT_CONSPECT_WRITER.format(
+            topic=theme,
+            full_text=full_text,
+            text_to_work=chunk
+        )
+        conspect_tasks.append(get_ai_request(prompt))
+        await asyncio.sleep(SLEEP_TIME)
+    
+    chunk_results = await asyncio.gather(*conspect_tasks)
+    
+    save_to_markdown(timestamps, theme, chunk_results)
+
+if __name__ == "__main__":
+    asyncio.run(main())
